@@ -1,0 +1,14 @@
+[project]
+name = "voiceclone2"
+version = "0.1.0"
+description = "基於 Qwen3-TTS 的語音克隆系統"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "qwen-tts",
+    "gradio",
+    "soundfile",
+    "librosa",
+    "matplotlib",
+    "numpy",
+]
