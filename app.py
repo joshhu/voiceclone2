@@ -208,6 +208,12 @@ def build_ui():
             outputs=[audio_out, status],
         )
 
+        ref_audio.change(
+            transcribe_audio,
+            inputs=[ref_audio],
+            outputs=[ref_text],
+        )
+
     return demo
 
 
