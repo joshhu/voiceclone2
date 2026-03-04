@@ -1,5 +1,9 @@
 # coding=utf-8
 # Voice Clone 語音克隆系統 — 基於 Qwen3-TTS Base 模型
+import os
+import re
+import glob
+import tempfile
 import numpy as np
 import torch
 import gradio as gr
@@ -7,6 +11,9 @@ from huggingface_hub import snapshot_download
 from qwen_tts import Qwen3TTSModel
 import librosa
 from faster_whisper import WhisperModel
+import soundfile as sf
+from yt_dlp import YoutubeDL
+from yt_dlp.utils import download_range_func
 
 # 偵測 flash-attn 是否可用
 try:
@@ -113,6 +120,81 @@ def transcribe_audio(audio):
         wav = librosa.resample(wav, orig_sr=sr, target_sr=16000)
     segments, _ = WHISPER_MODEL.transcribe(wav, beam_size=5)
     return "".join(seg.text for seg in segments).strip()
+
+
+def extract_video_id(url: str) -> str | None:
+    """從 YouTube URL 中提取 11 位 video_id。"""
+    m = re.search(r"(?:v=|youtu\.be/)([A-Za-z0-9_-]{11})", url)
+    return m.group(1) if m else None
+
+
+def parse_time(t: str) -> float:
+    """將 HH:MM:SS、MM:SS 或純秒數字串轉換為浮點秒數。"""
+    parts = [float(p) for p in t.strip().split(":")]
+    if len(parts) == 3:
+        return parts[0] * 3600 + parts[1] * 60 + parts[2]
+    if len(parts) == 2:
+        return parts[0] * 60 + parts[1]
+    return parts[0]
+
+
+def load_youtube_preview(url: str) -> str:
+    """回傳 YouTube embed iframe HTML；URL 無效時回傳錯誤提示。"""
+    vid = extract_video_id(url.strip() if url else "")
+    if not vid:
+        return '<p style="color:red">⚠ 無效的 YouTube 網址</p>'
+    return (
+        f'<iframe width="100%" height="280" '
+        f'src="https://www.youtube.com/embed/{vid}" '
+        f'frameborder="0" allowfullscreen></iframe>'
+    )
+
+
+def extract_youtube_audio(url: str, start_str: str, end_str: str):
+    """
+    以 yt-dlp 下載 YouTube 指定時間片段並轉為 WAV。
+    回傳 (audio_tuple, status_msg)。
+    audio_tuple 為 (sample_rate, numpy_float32_array) 或 None（失敗時）。
+    """
+    if not url or not url.strip():
+        return None, "錯誤：請輸入 YouTube 網址。"
+    if not extract_video_id(url):
+        return None, "錯誤：無效的 YouTube 網址。"
+    try:
+        start_sec = parse_time(start_str)
+        end_sec = parse_time(end_str)
+    except Exception:
+        return None, "錯誤：時間格式不正確，請使用 HH:MM:SS 或 MM:SS。"
+    if start_sec >= end_sec:
+        return None, "錯誤：開始時間必須小於結束時間。"
+
+    tmp_dir = tempfile.mkdtemp()
+    out_template = os.path.join(tmp_dir, "segment")
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'download_ranges': download_range_func(None, [(start_sec, end_sec)]),
+        'force_keyframes_at_cuts': True,
+        'outtmpl': out_template,
+        'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}],
+        'quiet': True,
+    }
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    except Exception as e:
+        return None, f"錯誤：下載失敗 — {e}"
+
+    candidates = glob.glob(os.path.join(tmp_dir, "*.wav"))
+    if not candidates:
+        return None, "錯誤：音訊提取失敗，找不到輸出 WAV 檔。"
+    wav_path = candidates[0]
+
+    wav_data, sr = sf.read(wav_path)
+    wav_data = wav_data.astype(np.float32)
+    if wav_data.ndim > 1:
+        wav_data = np.mean(wav_data, axis=-1)
+    duration = len(wav_data) / sr
+    return (sr, wav_data), f"✅ 提取完成！{start_str} → {end_str}（{duration:.1f} 秒）"
 
 
 # ============================================================================
