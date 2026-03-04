@@ -102,6 +102,19 @@ def _audio_to_tuple(audio):
     return None
 
 
+def transcribe_audio(audio):
+    """將參考音訊自動轉錄為文字。"""
+    audio_tuple = _audio_to_tuple(audio)
+    if audio_tuple is None:
+        return ""
+    wav, sr = audio_tuple
+    # Whisper 需要 float32、mono、16kHz
+    if sr != 16000:
+        wav = librosa.resample(wav, orig_sr=sr, target_sr=16000)
+    segments, _ = WHISPER_MODEL.transcribe(wav, beam_size=5)
+    return "".join(seg.text for seg in segments).strip()
+
+
 # ============================================================================
 # 語音克隆核心
 # ============================================================================
