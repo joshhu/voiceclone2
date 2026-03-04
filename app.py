@@ -5,6 +5,8 @@ import torch
 import gradio as gr
 from huggingface_hub import snapshot_download
 from qwen_tts import Qwen3TTSModel
+import librosa
+from faster_whisper import WhisperModel
 
 # 偵測 flash-attn 是否可用
 try:
@@ -48,6 +50,13 @@ base_model_1_7b = Qwen3TTSModel.from_pretrained(
 )
 
 BASE_MODELS = {"0.6B": base_model_0_6b, "1.7B": base_model_1_7b}
+print("  載入 Whisper large-v3-turbo ...")
+WHISPER_MODEL = WhisperModel(
+    "large-v3-turbo",
+    device="cuda",
+    compute_type="int8",
+)
+print("Whisper 載入完成！")
 print("模型載入完成！")
 
 
