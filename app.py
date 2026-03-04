@@ -246,6 +246,20 @@ def build_ui():
         with gr.Row():
             # ---- 左欄：參考音訊輸入 ----
             with gr.Column(scale=1):
+                gr.Markdown("### 從 YouTube 提取音訊（選用）")
+                yt_url = gr.Textbox(
+                    label="YouTube 網址",
+                    placeholder="https://www.youtube.com/watch?v=...",
+                    lines=1,
+                )
+                yt_load_btn = gr.Button("載入影片預覽", size="sm")
+                yt_preview = gr.HTML(value="")
+                with gr.Row():
+                    yt_start = gr.Textbox(label="開始時間", value="0:00:00", lines=1, scale=1)
+                    yt_end = gr.Textbox(label="結束時間", value="0:00:30", lines=1, scale=1)
+                yt_extract_btn = gr.Button("提取音訊片段", variant="secondary")
+                yt_status = gr.Textbox(label="提取狀態", lines=1, interactive=False)
+                gr.Markdown("---")
                 ref_audio = gr.Audio(
                     label="參考音訊（上傳要克隆的聲音樣本）",
                     type="numpy",
