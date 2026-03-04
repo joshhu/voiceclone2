@@ -310,6 +310,24 @@ def build_ui():
             outputs=[ref_text],
         )
 
+        yt_load_btn.click(
+            load_youtube_preview,
+            inputs=[yt_url],
+            outputs=[yt_preview],
+        )
+
+        def _extract_and_transcribe(url, start, end):
+            audio, msg = extract_youtube_audio(url, start, end)
+            if audio is None:
+                return None, "", msg
+            return audio, transcribe_audio(audio), msg
+
+        yt_extract_btn.click(
+            _extract_and_transcribe,
+            inputs=[yt_url, yt_start, yt_end],
+            outputs=[ref_audio, ref_text, yt_status],
+        )
+
     return demo
 
 
