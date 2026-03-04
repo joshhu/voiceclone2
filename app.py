@@ -6,6 +6,13 @@ import gradio as gr
 from huggingface_hub import snapshot_download
 from qwen_tts import Qwen3TTSModel
 
+# 偵測 flash-attn 是否可用
+try:
+    import flash_attn  # noqa: F401
+    _ATTN_IMPL = "flash_attention_2"
+except ImportError:
+    _ATTN_IMPL = "sdpa"
+
 # 支援的語言
 LANGUAGES = [
     "Auto", "Chinese", "English", "Japanese", "Korean",
@@ -29,7 +36,7 @@ base_model_0_6b = Qwen3TTSModel.from_pretrained(
     get_model_path("0.6B"),
     device_map="cuda",
     dtype=torch.bfloat16,
-    attn_implementation="flash_attention_2",
+    attn_implementation=_ATTN_IMPL,
 )
 
 print("  載入 Base 1.7B ...")
@@ -37,7 +44,7 @@ base_model_1_7b = Qwen3TTSModel.from_pretrained(
     get_model_path("1.7B"),
     device_map="cuda",
     dtype=torch.bfloat16,
-    attn_implementation="flash_attention_2",
+    attn_implementation=_ATTN_IMPL,
 )
 
 BASE_MODELS = {"0.6B": base_model_0_6b, "1.7B": base_model_1_7b}
@@ -123,11 +130,7 @@ def generate_voice_clone(
 # Gradio UI
 # ============================================================================
 def build_ui():
-    theme = gr.themes.Soft(
-        font=[gr.themes.GoogleFont("Source Sans Pro"), "Arial", "sans-serif"],
-    )
-
-    with gr.Blocks(theme=theme, title="Voice Clone 語音克隆") as demo:
+    with gr.Blocks(title="Voice Clone 語音克隆") as demo:
         gr.Markdown(
             """
 # Voice Clone 語音克隆系統
@@ -188,4 +191,10 @@ def build_ui():
 
 if __name__ == "__main__":
     demo = build_ui()
-    demo.launch()
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        theme=gr.themes.Soft(
+            font=[gr.themes.GoogleFont("Source Sans Pro"), "Arial", "sans-serif"],
+        ),
+    )
