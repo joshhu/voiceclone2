@@ -11,4 +11,6 @@ dependencies = [
     "librosa",
     "matplotlib",
     "numpy",
+    "faster-whisper>=1.2.1",
+    "yt-dlp>=2026.3.3",
 ]
